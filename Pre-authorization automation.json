@@ -1,0 +1,915 @@
+{
+  "name": "Pre-authorization automation",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1312,
+        640
+      ],
+      "id": "5ed35306-4efb-4eb7-addc-9e8ec72243bc",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1728,
+        896
+      ],
+      "id": "63fd13fe-8a0d-497b-895c-e6c842f1af70",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "QWJKaZL2p6inbwWI",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a21b46e6-02be-488a-8bca-fac36f6bf43d",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1600,
+        640
+      ],
+      "id": "8f5a4ae4-f4fc-43c1-913f-9bfaf64f60de",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseText = items[0].json.text; // Assuming the LLM output is in the 'text' field\ntry {\n  const parsedData = JSON.parse(responseText.replace(/```json|```/g, \"\"));\n  return [{ json: parsedData }];\n} catch (e) {\n  return [{ json: { error: \"Failed to parse LLM output\", raw: responseText } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2384,
+        640
+      ],
+      "id": "0554bec5-7426-4cad-bb95-b22ad86ccbec",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Policy Details').item.json.Email }}",
+        "subject": "Medical Pre authorization Approved !!",
+        "emailType": "text",
+        "message": "=Dear {{ $('Policy Details').item.json['Policy holder name'] }}\n\nWe are pleased to inform you that the pre-authorization request for the below-mentioned case has been approved.\n\n\nProcedure / Treatment:{{ $json.procedure_extracted }}\nCPT Code(s): {{ $json.cpt_codes[0] }}\nHospital / Provider: MHS\n\nThe request has been reviewed and meets the necessary medical and policy criteria for approval. Kindly proceed with the scheduled treatment as planned.\n\nIf any additional documentation or clarification is required, please feel free to reach out.\n\nThank you for your prompt attention and support.\n\nBest regards,\n{{ $('Pre Auth Form').item.json['Insurance Provider'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2912,
+        624
+      ],
+      "id": "92ce3adb-0028-437a-8015-33358c0325a0",
+      "name": "Send a message",
+      "webhookId": "36554c44-765f-4e06-a83f-ff8125f8c0e2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5Am6itcrj728kGZ6",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "eba55f3b-3571-469f-8ae3-7b9710445be4",
+              "leftValue": "={{ $json.s$('Code in JavaScript').item.json.statustatus }}",
+              "rightValue": "PENDIND DETAILS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2800,
+        944
+      ],
+      "id": "e1e3f6b9-af38-4728-afa8-795f51db2051",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Policy Details').item.json.Email }}",
+        "subject": "=Pre-Authorization Request – Additional Information Required for  {{ $('Policy Details').item.json['Policy Number'] }}",
+        "emailType": "text",
+        "message": "=Dear Provider Team,\n\nWe have reviewed the pre-authorization request submitted for the below-mentioned case. At this time, we require additional information to proceed with the evaluation.\n\nPatient Name: {{ $('Policy Details').item.json['Policy holder name'] }}\nRequested Procedure: {{ $('Code in JavaScript').item.json.procedure_extracted }}\nCPT Code(s): {{ $('Code in JavaScript').item.json.cpt_codes[0] }}\n\nMissing / Required Details:\n{{ $('Code in JavaScript').item.json.reasoning }}\n\n\nKindly provide the above details at the earliest to avoid delays in processing. Once received, we will promptly continue the review and update you on the decision.\n\nIf you have any questions or need clarification, please feel free to contact us.\n\nThank you for your cooperation.\n\nBest regards,\n{{ $('Pre Auth Form').item.json['Insurance Provider'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3104,
+        928
+      ],
+      "id": "4b723c70-f9a7-4096-80fa-68876a0b1ea0",
+      "name": "Send a message1",
+      "webhookId": "36554c44-765f-4e06-a83f-ff8125f8c0e2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5Am6itcrj728kGZ6",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Policy Details').item.json.Email }}",
+        "subject": "=Pre-Authorization Request – Rejected for  {{ $('Policy Details').item.json['Policy Number'] }}",
+        "emailType": "text",
+        "message": "=Dear Provider Team,\n\nWe regret to inform you that the pre-authorization request for the below-mentioned case has been rejected after clinical and policy review.\n\nPatient Name: {{ $('Policy Details').item.json['Policy holder name'] }}\nRequested Procedure: {{ $('Code in JavaScript').item.json.procedure_extracted }}\nCPT Code(s): {{ $('Code in JavaScript').item.json.cpt_codes[0] }}\n\nReason for Rejection::\n{{ $('Code in JavaScript').item.json.reasoning }}\n\n\nYou may choose to resubmit the request with additional supporting documentation or clinical justification for reconsideration. Alternatively, if you believe this decision requires further review, you may initiate an appeal as per the policy guidelines.\n\nFor any questions or clarification, please feel free to reach out to us.\n\nThank you for your understanding.\n\nBest regards,\n{{ $('Pre Auth Form').item.json['Insurance Provider'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3120,
+        1216
+      ],
+      "id": "27787387-2e99-45ee-bbd9-ab033a0d2d39",
+      "name": "Send a message2",
+      "webhookId": "36554c44-765f-4e06-a83f-ff8125f8c0e2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5Am6itcrj728kGZ6",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "7a5cc658-b32d-42c6-a91d-0303cd3129c9",
+        "formTitle": "Pre Authorization Form",
+        "formDescription": "Please fill the details to initiate the process",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Patient Name",
+              "placeholder": "Enter patient name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Insurance Provider",
+              "placeholder": "Enter insurance provider name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Policy Number",
+              "placeholder": "Enter policy number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Doctor Prescription Upload",
+              "fieldType": "file",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d544dec7-a14b-4b5a-99e1-43fbcea28af3",
+      "name": "Pre Auth Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        640
+      ],
+      "webhookId": "7a5cc658-b32d-42c6-a91d-0303cd3129c9"
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "={{ Object.keys($binary)[0] }}",
+        "name": "={{ $json['Doctor Prescription Upload'][0].filename }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1PSA9pJkcBIeAuh9WAbObI-UwOGNpF55X",
+          "mode": "list",
+          "cachedResultName": "TestResume",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1PSA9pJkcBIeAuh9WAbObI-UwOGNpF55X"
+        },
+        "options": {}
+      },
+      "id": "a44ffbc4-d7b2-4b30-811f-9dbf2d06bba9",
+      "name": "Database Upload",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        272,
+        640
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "093KEpxibNbCguHG",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8/values/Sheet1!A1:append?valueInputOption=USER_ENTERED",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"values\": [\n    [\n      \"{{ $node[\"Pre Auth Form\"].json[\"Patient Name\"] }}\",\n      \"{{ $node[\"Pre Auth Form\"].json[\"Insurance Provider\"] }}\",\n      \"{{ $node[\"Pre Auth Form\"].json[\"Policy Number\"] }}\",\n      \"{{ $json[\"webViewLink\"] }}\"\n    ]\n  ]\n}",
+        "options": {}
+      },
+      "id": "e2d70f0f-7249-4b5c-a124-d7258f8d6dae",
+      "name": "Insurer System Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        544,
+        640
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "btZ5aV78jHhDyenb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8",
+          "mode": "list",
+          "cachedResultName": "Pre-auth form",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 240532929,
+          "mode": "list",
+          "cachedResultName": "Eligibility",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8/edit#gid=240532929"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Policy Number",
+              "lookupValue": "={{ $('Pre Auth Form').item.json['Policy Number'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        800,
+        640
+      ],
+      "id": "1ade3207-989d-4abf-9b9c-1c2bddef11da",
+      "name": "Policy Details",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "btZ5aV78jHhDyenb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Database Upload').item.json.webViewLink }}",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1072,
+        640
+      ],
+      "id": "435a0279-1465-4d4a-8841-2b9f85f1201c",
+      "name": "Get Clinical Findings",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "093KEpxibNbCguHG",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert Medical Pre-Authorization Specialist. Your task is to audit a patient's medical chart against insurance guidelines.\n\n### INPUT DATA\n- PATIENT CHART TEXT: {{ $json.text }}\n- GUIDELINES (Medical Conditions Covered): {{ $('Policy Details').item.json['Medical conditions Covered'] }}\n\n### INSTRUCTIONS\n1. Extract the medical procedure mentioned in the chart.\n2. Convert the procedure to its standard CPT codes.\n3. Compare the chart details against the guidelines to determine eligibility.\n4. Determine the Status: APPROVED, REJECTED, or PENDING_DETAILS.\n\n### OUTPUT FORMAT\nReturn ONLY a valid JSON object with this exact structure. Do not include any preamble or markdown formatting like ```json.\n{\n  \"status\": \"string\",\n  \"cpt_codes\": [\"string\"],\n  \"procedure_extracted\": \"string\",\n  \"reasoning\": \"string\",\n  \"missing_details\": \"string or null\"\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1936,
+        640
+      ],
+      "id": "b879cc23-52fd-43c8-8602-341a02e49b34",
+      "name": "Pre auth Intelligence Engine"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "eba55f3b-3571-469f-8ae3-7b9710445be4",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "APPROVED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2592,
+        640
+      ],
+      "id": "c9cc9f24-7d62-434c-8f6f-45d956c460bf",
+      "name": "Approval Status"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8",
+          "mode": "list",
+          "cachedResultName": "Pre-auth form",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 240532929,
+          "mode": "list",
+          "cachedResultName": "Eligibility",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8/edit#gid=240532929"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Policy Number": "={{ $('Policy Details').item.json['Policy Number'] }}",
+            "Status": "={{ $('Code in JavaScript').item.json.status }}"
+          },
+          "matchingColumns": [
+            "Policy Number"
+          ],
+          "schema": [
+            {
+              "id": "Policy Number",
+              "displayName": "Policy Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Policy holder name",
+              "displayName": "Policy holder name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Policy Status",
+              "displayName": "Policy Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Medical conditions Covered",
+              "displayName": "Medical conditions Covered",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3232,
+        624
+      ],
+      "id": "70835f29-c9dc-4879-967d-d84a67867d1e",
+      "name": "Update Status1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "btZ5aV78jHhDyenb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8",
+          "mode": "list",
+          "cachedResultName": "Pre-auth form",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 240532929,
+          "mode": "list",
+          "cachedResultName": "Eligibility",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8/edit#gid=240532929"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Policy Number": "={{ $('Policy Details').item.json['Policy Number'] }}",
+            "Status": "={{ $('Code in JavaScript').item.json.status }}"
+          },
+          "matchingColumns": [
+            "Policy Number"
+          ],
+          "schema": [
+            {
+              "id": "Policy Number",
+              "displayName": "Policy Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Policy holder name",
+              "displayName": "Policy holder name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Policy Status",
+              "displayName": "Policy Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Medical conditions Covered",
+              "displayName": "Medical conditions Covered",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3296,
+        928
+      ],
+      "id": "a959044a-82f0-4518-a659-22b9be820442",
+      "name": "Update Status2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "btZ5aV78jHhDyenb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8",
+          "mode": "list",
+          "cachedResultName": "Pre-auth form",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 240532929,
+          "mode": "list",
+          "cachedResultName": "Eligibility",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16Motwu8qAyh_PoSzrVPiItzL2Ashy5Nhg2tXVHaPpy8/edit#gid=240532929"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Policy Number": "={{ $('Policy Details').item.json['Policy Number'] }}",
+            "Status": "={{ $('Code in JavaScript').item.json.status }}"
+          },
+          "matchingColumns": [
+            "Policy Number"
+          ],
+          "schema": [
+            {
+              "id": "Policy Number",
+              "displayName": "Policy Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Policy holder name",
+              "displayName": "Policy holder name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Policy Status",
+              "displayName": "Policy Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Medical conditions Covered",
+              "displayName": "Medical conditions Covered",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3312,
+        1216
+      ],
+      "id": "e88e5d33-4a6a-4b7d-858b-8d318d5af017",
+      "name": "Update Status3",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "btZ5aV78jHhDyenb",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Pre auth Intelligence Engine",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Pre auth Intelligence Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Approval Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Update Status1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Update Status2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message2": {
+      "main": [
+        [
+          {
+            "node": "Update Status3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pre Auth Form": {
+      "main": [
+        [
+          {
+            "node": "Database Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Database Upload": {
+      "main": [
+        [
+          {
+            "node": "Insurer System Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insurer System Upload": {
+      "main": [
+        [
+          {
+            "node": "Policy Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policy Details": {
+      "main": [
+        [
+          {
+            "node": "Get Clinical Findings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Clinical Findings": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pre auth Intelligence Engine": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval Status": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9c8e7d0d-5d4e-4fb0-9b09-dd62781d6f18",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4f62b2660ea14d851c22d8bb513f8f4d4d9f2ee853e5d6ae21a4918b4886ac30"
+  },
+  "id": "PchF2yEniLgX27va",
+  "tags": []
+}
